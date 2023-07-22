@@ -1,4 +1,4 @@
-PACKAGE := pacman
+PACKAGE := ms-pacman
 
 # Go defintions
 GOCMD ?= go
@@ -7,7 +7,7 @@ GOINSTALL := $(GOCMD) install
 GOARCH := amd64
 
 # Build definitions
-BUILD_ENTRY := $(PWD)/cmd/pacman
+BUILD_ENTRY := $(PWD)/cmd/ms-pacman
 BIN_DIR := $(PWD)/bin
 
 # Determine the file extension based on the platform
@@ -34,10 +34,10 @@ command-style = $(BLUE)$(BOLD)$1$(END)  $(ITALIC)$(YELLOW)$2$(END)
 
 define help_text
 $(PURPLE)$(BOLD)Targets:$(END)
-  - $(call command-style,all,    Build pacman for all targets (Linux, Windows, Mac, 64-bit))
-  - $(call command-style,build,  Build pacman for current host architecture)
-  - $(call command-style,run,    Build and run pacman for current host)
-  - $(call command-style,install,Build and install pacman for current host)
+  - $(call command-style,all,    Build ms-pacman for all targets (Linux, Windows, Mac, 64-bit))
+  - $(call command-style,build,  Build ms-pacman for current host architecture)
+  - $(call command-style,run,    Build and run ms-pacman for current host)
+  - $(call command-style,install,Build and install ms-pacman for current host)
   - $(call command-style,debug,  Run a dlv debug headless session)
   - $(call command-style,test,   Run all tests)
   - $(call command-style,clean,  Delete built artifacts)

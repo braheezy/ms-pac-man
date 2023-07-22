@@ -1,4 +1,4 @@
-module github.com/braheezy/pacman
+module github.com/braheezy/ms-pacman
 
 go 1.20
 

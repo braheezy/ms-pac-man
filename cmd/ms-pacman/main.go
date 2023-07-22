@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	"github.com/braheezy/pacman/internal/game"
+	"github.com/braheezy/ms-pacman/internal/game"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )
