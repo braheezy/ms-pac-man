@@ -2,11 +2,12 @@ package game
 
 import (
 	"github.com/hajimehoshi/ebiten/v2"
-	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 )
 
 // Defines Game struct. Game implements ebiten.Game interface. ebiten.Game has necessary functions for an Ebitengine game: Update, Draw and Layout. Let's see them one by one.
-type Game struct{}
+type Game struct {
+	CurrentLevelImage *ebiten.Image
+}
 
 // called every tick. Tick is a time unit for logical updating. The default value is 1/60 [s], then Update is called 60 times per second by default (i.e. an Ebitengine game works in 60 ticks-per-second).
 //
@@ -19,9 +20,9 @@ func (g *Game) Update() error {
 //
 // Draw takes an argument screen, which is a pointer to an ebiten.Image. In Ebitengine, all images like images created from image files, offscreen images (temporary render target), and the screen are represented as ebiten.Image objects. screen argument is the final destination of rendering. The window shows the final state of screen every frame.
 func (g *Game) Draw(screen *ebiten.Image) {
-	ebitenutil.DebugPrint(screen, "Hello, World!")
+	screen.DrawImage(g.CurrentLevelImage, &ebiten.DrawImageOptions{})
 }
 
 func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
-	return 320, 240
+	return Config.Width, Config.Height
 }
