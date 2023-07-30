@@ -3,6 +3,7 @@ package assets
 import (
 	"embed"
 	"io/fs"
+	"log"
 	"path"
 	"strings"
 
@@ -67,19 +68,37 @@ var tileLookup = map[rune]string{
 	'*': "gate",
 }
 
-const TileSize = 16
-const SpriteSize = 32
+const (
+	TileSize   = 16
+	SpriteSize = 32
+	MoveSpeed  = 4
+)
 
-func CreateLevelImage(levelName string) (*ebiten.Image, error) {
+type TileType int
+
+const (
+	TileTypeBlank TileType = iota
+	TileTypeWall
+	TileTypeGate
+	TileTypePellet
+	TileTypePowerPellet
+	TileTypePlayer
+)
+
+func LoadLevelImage(levelName string) (*ebiten.Image, [][]TileType, error) {
 	layout, err := loadLevelLayout(levelName)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	levelHeight := len(layout)
 	levelWidth := len(layout[0])
 
 	fullImage := ebiten.NewImage(levelWidth*TileSize*2, levelHeight*TileSize)
+	tiles := make([][]TileType, levelHeight)
+	for i := range tiles {
+		tiles[i] = make([]TileType, levelWidth*2)
+	}
 
 	for rowIdx, row := range layout {
 		for colIdx, char := range row {
@@ -88,19 +107,30 @@ func CreateLevelImage(levelName string) (*ebiten.Image, error) {
 				continue
 			}
 
-			tileSprite, err := LoadImage(path.Join(levelName, "tiles", tileName), levelFS)
+			tileSprite := loadImage(path.Join(levelName, "tiles", tileName), levelFS)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 
 			// Calculate the position to draw the tile
 			tileX := colIdx * TileSize
 			tileY := rowIdx * TileSize
+			op := &ebiten.DrawImageOptions{}
+
+			var tileType TileType
+			switch tileName {
+			case "blank":
+				tileType = TileTypeBlank
+			case "pellet":
+				tileType = TileTypePellet
+			case "power_pellet":
+				tileType = TileTypePowerPellet
+			default:
+				tileType = TileTypeWall
+			}
 
 			// Draw the tile on the full image
-			op := &ebiten.DrawImageOptions{}
 			op.GeoM.Translate(float64(tileX), float64(tileY))
-			// fmt.Printf("Adding tile %s at (%d,%d)\n", tileName, tileX, tileY)
 			fullImage.DrawImage(tileSprite, op)
 
 			// Calculate the position to draw the mirrored tile (along the Y axis)
@@ -111,11 +141,14 @@ func CreateLevelImage(levelName string) (*ebiten.Image, error) {
 			mirroredOp := &ebiten.DrawImageOptions{}
 			mirroredOp.GeoM.Scale(-1, 1) // Mirroring along the Y axis
 			mirroredOp.GeoM.Translate(float64(mirroredX+levelWidth*TileSize), float64(mirroredY))
-			// fmt.Printf("Adding tile %s at (%d,%d)\n", tileName, mirroredX+levelWidth*TileSize, mirroredY)
 			fullImage.DrawImage(tileSprite, mirroredOp)
+
+			tiles[rowIdx][colIdx] = tileType
+			tiles[rowIdx][levelWidth*2-colIdx-1] = tileType
 		}
 	}
-	return fullImage, nil
+
+	return fullImage, tiles, nil
 }
 func loadLevelLayout(levelName string) ([][]rune, error) {
 	// Read layout from file system
