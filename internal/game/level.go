@@ -56,11 +56,6 @@ func (l *Level) MovePlayer() {
 	}
 
 	l.player.pixelCoord.x, l.player.pixelCoord.y = l.player.getNextPixelCoord()
-
-	op := &ebiten.DrawImageOptions{}
-
-	op.GeoM.Translate(float64(l.player.pixelCoord.x), float64(l.player.pixelCoord.y))
-	l.image.DrawImage(l.player.image, op)
 }
 
 func (l *Level) Update() {
