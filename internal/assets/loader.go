@@ -18,7 +18,12 @@ var spriteFS embed.FS
 //go:embed levels/*
 var levelFS embed.FS
 
-func LoadImage(path string, filesystem fs.FS) (img *ebiten.Image, err error) {
+func LoadSprite(name string) *ebiten.Image {
+	return loadImage(name, spriteFS)
+}
+
+func loadImage(path string, filesystem fs.FS) (img *ebiten.Image) {
+	var err error
 	switch filesystem {
 	case levelFS:
 		img, _, err = ebitenutil.NewImageFromFileSystem(filesystem, "levels/"+path+".png")
@@ -27,9 +32,9 @@ func LoadImage(path string, filesystem fs.FS) (img *ebiten.Image, err error) {
 	}
 
 	if err != nil {
-		return nil, err
+		log.Fatalln(err)
 	}
-	return img, nil
+	return img
 }
 
 var tileLookup = map[rune]string{

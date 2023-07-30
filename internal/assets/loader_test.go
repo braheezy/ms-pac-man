@@ -7,10 +7,7 @@ import (
 )
 
 func TestLoadSprite(t *testing.T) {
-	sprite, err := LoadImage("100pts", spriteFS)
-	if err != nil {
-		t.Fatalf("Error loading sprite: %v", err)
-	}
+	sprite := loadImage("100pts", spriteFS)
 
 	// Ensure that the returned sprite is not nil
 	assert.NotNil(t, sprite)
@@ -21,10 +18,7 @@ func TestLoadSprite(t *testing.T) {
 }
 
 func TestLoadTile(t *testing.T) {
-	sprite, err := LoadImage("level1/tiles/pellet", levelFS)
-	if err != nil {
-		t.Fatalf("Error loading sprite: %v", err)
-	}
+	sprite := loadImage("level1/tiles/pellet", levelFS)
 
 	// Ensure that the returned sprite is not nil
 	assert.NotNil(t, sprite)
