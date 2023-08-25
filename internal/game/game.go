@@ -20,10 +20,12 @@ func (g *Game) Update() error {
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
+	// Draw the level image
 	screen.DrawImage(g.level.image, nil)
 
 	op := &ebiten.DrawImageOptions{}
-	op.GeoM.Translate(float64(g.level.player.pixelCoord.x), float64(g.level.player.pixelCoord.y))
+	// Put the player on the level
+	op.GeoM.Translate(g.level.player.pixelCoord.x, g.level.player.pixelCoord.y)
 	screen.DrawImage(g.level.player.image, op)
 }
 
