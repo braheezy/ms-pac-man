@@ -22,8 +22,21 @@ var levels = []Level{
 			pixelCoord: Position{x: 13 * assets.TileSize, y: 23*assets.TileSize - (assets.TileSize / 2)},
 			image:      assets.LoadSprite("mspac_Lnorm"),
 			direction:  Left,
+			moveSpeed:  playerSpeedForLevel(1),
 		},
 	},
+}
+
+func playerSpeedForLevel(level int) float64 {
+	if level == 1 {
+		return 0.8 * Config.MaxMoveSpeed / float64(ebiten.TPS())
+	} else if level >= 2 && level <= 4 {
+		return 0.9 * Config.MaxMoveSpeed / float64(ebiten.TPS())
+	} else if level >= 5 && level <= 20 {
+		return Config.MaxMoveSpeed / float64(ebiten.TPS())
+	} else {
+		return 0.9 * Config.MaxMoveSpeed / float64(ebiten.TPS())
+	}
 }
 
 func newDefaultLevel() *Level {
@@ -39,29 +52,20 @@ func newDefaultLevel() *Level {
 }
 
 func (l *Level) MovePlayer() {
-	var newDirection Direction
 	if ebiten.IsKeyPressed(ebiten.KeyArrowRight) {
-		newDirection = Right
+		l.player.direction = Right
 	} else if ebiten.IsKeyPressed(ebiten.KeyArrowLeft) {
-		newDirection = Left
+		l.player.direction = Left
 	} else if ebiten.IsKeyPressed(ebiten.KeyArrowUp) {
-		newDirection = Up
+		l.player.direction = Up
 	} else if ebiten.IsKeyPressed(ebiten.KeyArrowDown) {
-		newDirection = Down
-	}
-
-	nextX, nextY := l.player.getNextTileCoord()
-	if !l.isWallTile(nextX, nextY) {
-		l.player.direction = newDirection
+		l.player.direction = Down
 	}
 
 	l.player.pixelCoord.x, l.player.pixelCoord.y = l.player.getNextPixelCoord()
+
 }
 
 func (l *Level) Update() {
 	l.MovePlayer()
-}
-
-func (l *Level) isWallTile(x, y int) bool {
-	return l.grid[x][y] == assets.TileTypeWall
 }

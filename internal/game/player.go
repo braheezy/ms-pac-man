@@ -20,13 +20,13 @@ func (p *Player) getNextTileCoord() (int, int) {
 	nextX, nextY := p.tileCoord.x, p.tileCoord.y
 	switch p.direction {
 	case Up:
-		nextY--
+		nextY -= p.moveSpeed
 	case Right:
-		nextX++
+		nextX += p.moveSpeed
 	case Down:
-		nextY++
+		nextY += p.moveSpeed
 	case Left:
-		nextX--
+		nextX -= p.moveSpeed
 	}
 	return nextX, nextY
 }

@@ -71,7 +71,6 @@ var tileLookup = map[rune]string{
 const (
 	TileSize   = 16
 	SpriteSize = 32
-	MoveSpeed  = 4
 )
 
 type TileType int
