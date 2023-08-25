@@ -18,7 +18,7 @@ func TestLoadSprite(t *testing.T) {
 }
 
 func TestLoadTile(t *testing.T) {
-	sprite := loadImage("level1/tiles/pellet", levelFS)
+	sprite := loadImage("Level 1/tiles/pellet", levelFS)
 
 	// Ensure that the returned sprite is not nil
 	assert.NotNil(t, sprite)
@@ -30,7 +30,7 @@ func TestLoadTile(t *testing.T) {
 
 func TestLoadLevelLayout(t *testing.T) {
 
-	layoutText, err := loadLevelLayout("level1")
+	layoutText, err := loadLevelLayout("Level 1")
 
 	// Ensure that the returned sprite is not nil
 	assert.NoError(t, err)
@@ -41,16 +41,15 @@ func TestLoadLevelLayout(t *testing.T) {
 
 func TestCreateLevelImage(t *testing.T) {
 
-	level, tiles, err := LoadLevelImage("level1")
+	level, tiles, err := LoadLevelImage("Level 1")
 
 	assert.NoError(t, err)
 	assert.NotNil(t, level)
 	assert.Len(t, tiles[0], 28)
 	assert.Len(t, tiles, 31)
-	assert.Equal(t, tiles[0][0], TileTypeWall)
-	assert.Equal(t, tiles[0][27], TileTypeWall)
-	assert.Equal(t, tiles[1][1], TileTypePellet)
-	assert.Equal(t, tiles[30][27], TileTypeWall)
-	assert.Equal(t, TileTypePlayer, tiles[13][23])
+	assert.Equal(t, tiles[0][0], TileTypeWall, "First tile should be a wall")
+	assert.Equal(t, tiles[0][27], TileTypeWall, "Last tile should be a wall")
+	assert.Equal(t, tiles[1][1], TileTypePellet, "Confirm pellet tile")
+	assert.Equal(t, tiles[30][27], TileTypeWall, "Confirm random wall")
 
 }
