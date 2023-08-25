@@ -14,10 +14,12 @@ type Player struct {
 	pixelCoord Position
 	// Where on the grid the play is occupying
 	tileCoord Position
+	// How fast the player moves in pixels per frame
+	moveSpeed float64
 }
 
-func (p *Player) getNextTileCoord() (int, int) {
-	nextX, nextY := p.tileCoord.x, p.tileCoord.y
+func (p *Player) getNextPixelCoord() (float64, float64) {
+	nextX, nextY := p.pixelCoord.x, p.pixelCoord.y
 	switch p.direction {
 	case Up:
 		nextY -= p.moveSpeed
@@ -31,17 +33,41 @@ func (p *Player) getNextTileCoord() (int, int) {
 	return nextX, nextY
 }
 
-func (p *Player) getNextPixelCoord() (int, int) {
-	nextX, nextY := p.pixelCoord.x, p.pixelCoord.y
-	switch p.direction {
-	case Up:
-		nextY -= assets.MoveSpeed
-	case Right:
-		nextX += assets.MoveSpeed
-	case Down:
-		nextY += assets.MoveSpeed
-	case Left:
-		nextX -= assets.MoveSpeed
+func (p *Player) getNextTileCoord(gridSize int) (int, int) {
+	gridX := p.pixelCoord.x / assets.TileSize
+	gridY := p.pixelCoord.y / assets.TileSize
+
+	offsetX := int(p.pixelCoord.x) % assets.TileSize
+	offsetY := int(p.pixelCoord.y) % assets.TileSize
+
+	coverageX := float64(offsetX) / assets.TileSize
+	coverageY := float64(offsetY) / assets.TileSize
+
+	// Determine the tile that the player is mostly covering
+	var tileX, tileY float64
+	if coverageX >= 0.50 {
+		tileX = gridX + 1
+	} else {
+		tileX = gridX
 	}
-	return nextX, nextY
+	if coverageY >= 0.50 {
+		tileY = gridY + 1
+	} else {
+		tileY = gridY
+	}
+
+	// Prevent overflows
+	gridSizeF := float64(gridSize)
+	if tileX > gridSizeF-1 {
+		tileX = gridSizeF - 1
+	} else if tileX < 0 {
+		tileX = 0
+	}
+	if tileY > gridSizeF-1 {
+		tileY = gridSizeF - 1
+	} else if tileY < 0 {
+		tileY = 0
+	}
+
+	return int(tileX), int(tileY)
 }
