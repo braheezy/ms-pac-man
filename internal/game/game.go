@@ -30,7 +30,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 	op := &ebiten.DrawImageOptions{}
 	// Put the player on the level
-	op.GeoM.Translate(g.level.player.pixelCoord.x, g.level.player.pixelCoord.y)
+	op.GeoM.Translate(g.level.player.pixelX, g.level.player.pixelY)
 	screen.DrawImage(g.level.player.image, op)
 }
 

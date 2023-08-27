@@ -9,6 +9,17 @@ const (
 	Right
 )
 
-type Position struct {
-	x, y float64
+func (d Direction) String() string {
+	names := [...]string{
+		"Up",
+		"Down",
+		"Left",
+		"Right",
+	}
+
+	if d < Up || d > Right {
+		return "UnknownDirection"
+	}
+
+	return names[d]
 }

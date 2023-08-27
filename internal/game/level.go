@@ -1,7 +1,7 @@
 package game
 
 import (
-	"image/color"
+	"image"
 	"log"
 
 	"github.com/braheezy/ms-pacman/internal/assets"
@@ -10,7 +10,7 @@ import (
 
 type Level struct {
 	image  *ebiten.Image
-	grid   [][]assets.TileType
+	grid   [][]assets.Tile
 	name   string
 	player Player
 }
@@ -19,11 +19,13 @@ var levels = []Level{
 	{
 		name: "Level 1",
 		player: Player{
-			tileCoord:  Position{x: 13, y: 23},
-			pixelCoord: Position{x: 13 * assets.TileSize, y: 23*assets.TileSize - (assets.TileSize / 2)},
-			image:      assets.LoadSprite("mspac_Lnorm"),
-			direction:  Left,
-			moveSpeed:  playerSpeedForLevel(1),
+			tileX:     13,
+			tileY:     23,
+			pixelX:    13 * assets.TileSize,
+			pixelY:    23*assets.TileSize - (assets.TileSize / 2),
+			image:     assets.LoadSprite("mspac_Lnorm"),
+			direction: Left,
+			moveSpeed: playerSpeedForLevel(1),
 		},
 	},
 }
@@ -64,43 +66,24 @@ func (l *Level) MovePlayer() {
 	}
 
 	nextX, nextY := l.player.getNextPixelCoord()
-	gridSize := len(l.grid)
-	x, y := l.player.getNextTileCoord(gridSize)
-	nextTileType := l.grid[y][x]
-	if nextTileType == assets.TileTypeWall {
-		tileX := x * assets.TileSize
-		tileY := y * assets.TileSize
+	nextTileX, nextTileY := l.player.getNextTileCoord()
+	nextTile := l.grid[nextTileY][nextTileX]
 
-		// Create a new image containing only the specific tile
-		tileSprite := ebiten.NewImage(assets.TileSize, assets.TileSize)
-		tileSprite.Fill(color.Transparent) // Fill the new image with transparent color
+	if nextTile.Type == assets.TileTypeWall {
+		boundingBox := image.Rect(int(nextX), int(nextY), int(nextX+assets.SpriteSize), int(nextY+assets.SpriteSize))
 
-		// Draw the specific tile onto the new image
-		op := &ebiten.DrawImageOptions{}
-		op.GeoM.Translate(-float64(tileX), -float64(tileY)) // Offset to draw the specific tile
-		tileSprite.DrawImage(l.image, op)
-
-		pixels := make([]byte, 4*tileSprite.Bounds().Dx()*tileSprite.Bounds().Dy())
-		tileSprite.ReadPixels(pixels)
-
-		// Calculate the pixel position within the tile sprite
-		tileOffsetX := int(nextX) % assets.TileSize
-		tileOffsetY := int(nextY) % assets.TileSize
-		// Check if the pixel at the calculated position in the tile sprite is black (indicating a wall)
-		r, g, b, _ := tileSprite.At(tileOffsetX, tileOffsetY).RGBA()
-		if (r == 0 || r == 65535) && (g == 0 || g == 65535) && (b == 0 || b == 65535) {
-			l.player.pixelCoord.x, l.player.pixelCoord.y = nextX, nextY
-			l.player.tileCoord.x, l.player.tileCoord.y = float64(x), float64(y)
-		} else {
-			// It's a wall, do not update player's position
-			print("found wall pixel")
+		for y := boundingBox.Min.Y; y < boundingBox.Max.Y; y++ {
+			for x := boundingBox.Min.X; x < boundingBox.Max.X; x++ {
+				r, g, b, _ := l.image.At(x, y).RGBA()
+				// Magic numbers avoid pellet color
+				if (0 < r && r < 57054) || (0 < g && g < 57054) || (0 < b && b < 65535) {
+					return
+				}
+			}
 		}
-	} else {
-
-		l.player.pixelCoord.x, l.player.pixelCoord.y = nextX, nextY
-		l.player.tileCoord.x, l.player.tileCoord.y = float64(x), float64(y)
 	}
-
+	l.player.pixelX, l.player.pixelY = nextX, nextY
+	l.player.updateTileLocation()
 }
 
 func (l *Level) Update() {
