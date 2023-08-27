@@ -84,7 +84,33 @@ const (
 	TileTypePlayer
 )
 
-func LoadLevelImage(levelName string) (*ebiten.Image, [][]TileType, error) {
+func (t TileType) String() string {
+	names := [...]string{
+		"TileTypeBlank",
+		"TileTypeWall",
+		"TileTypeGate",
+		"TileTypePellet",
+		"TileTypePowerPellet",
+		"TileTypePlayer",
+	}
+
+	if t < TileTypeBlank || t > TileTypePlayer {
+		return "UnknownTileType"
+	}
+
+	return names[t]
+}
+
+type Tile struct {
+	Type   TileType
+	Sprite *ebiten.Image
+}
+
+func (t Tile) String() string {
+	return tileLookup[rune(t.Type)]
+}
+
+func LoadLevelImage(levelName string) (*ebiten.Image, [][]Tile, error) {
 	layout, err := loadLevelLayout(levelName)
 	if err != nil {
 		return nil, nil, err
@@ -94,9 +120,9 @@ func LoadLevelImage(levelName string) (*ebiten.Image, [][]TileType, error) {
 	levelWidth := len(layout[0])
 
 	fullImage := ebiten.NewImage(levelWidth*TileSize*2, levelHeight*TileSize)
-	tiles := make([][]TileType, levelHeight)
+	tiles := make([][]Tile, levelHeight)
 	for i := range tiles {
-		tiles[i] = make([]TileType, levelWidth*2)
+		tiles[i] = make([]Tile, levelWidth*2)
 	}
 
 	for rowIdx, row := range layout {
@@ -120,6 +146,8 @@ func LoadLevelImage(levelName string) (*ebiten.Image, [][]TileType, error) {
 			switch tileName {
 			case "blank":
 				tileType = TileTypeBlank
+			case "gate":
+				tileType = TileTypeGate
 			case "pellet":
 				tileType = TileTypePellet
 			case "power_pellet":
@@ -132,18 +160,26 @@ func LoadLevelImage(levelName string) (*ebiten.Image, [][]TileType, error) {
 			op.GeoM.Translate(float64(tileX), float64(tileY))
 			fullImage.DrawImage(tileSprite, op)
 
+			tiles[rowIdx][colIdx] = Tile{Type: tileType, Sprite: tileSprite}
+
+			// Create the mirrored sprite
+			mirroredTileSprite := ebiten.NewImage(TileSize, TileSize)
+
 			// Calculate the position to draw the mirrored tile (along the Y axis)
 			mirroredX := (levelWidth - colIdx) * TileSize
 			mirroredY := rowIdx * TileSize
 
 			// Draw the mirrored tile on the full image
 			mirroredOp := &ebiten.DrawImageOptions{}
-			mirroredOp.GeoM.Scale(-1, 1) // Mirroring along the Y axis
+			// Mirroring along the Y axis
+			mirroredOp.GeoM.Scale(-1, 1)
+			// First draw the mirrored sprite
+			mirroredTileSprite.DrawImage(tileSprite, mirroredOp)
+			// Then draw it on the level image
 			mirroredOp.GeoM.Translate(float64(mirroredX+levelWidth*TileSize), float64(mirroredY))
 			fullImage.DrawImage(tileSprite, mirroredOp)
 
-			tiles[rowIdx][colIdx] = tileType
-			tiles[rowIdx][levelWidth*2-colIdx-1] = tileType
+			tiles[rowIdx][levelWidth*2-colIdx-1] = Tile{Type: tileType, Sprite: mirroredTileSprite}
 		}
 	}
 
