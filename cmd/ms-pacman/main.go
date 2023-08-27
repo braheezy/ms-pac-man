@@ -14,7 +14,7 @@ func main() {
 
 	g := game.New()
 
-	if err := ebiten.RunGame(g); err != nil {
+	if err := ebiten.RunGame(g); err != nil && err.Error() != "user pressed escape" {
 		log.Fatal(err)
 	}
 }

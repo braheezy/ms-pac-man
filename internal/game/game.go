@@ -1,6 +1,8 @@
 package game
 
 import (
+	"fmt"
+
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
@@ -15,6 +17,9 @@ func New() *Game {
 }
 
 func (g *Game) Update() error {
+	if ebiten.IsKeyPressed(ebiten.KeyEscape) {
+		return fmt.Errorf("user pressed escape")
+	}
 	g.level.Update()
 	return nil
 }
