@@ -23,3 +23,11 @@ func (d Direction) String() string {
 
 	return names[d]
 }
+
+type PixelPos struct {
+	X, Y float32
+}
+
+type TilePos struct {
+	X, Y int
+}
