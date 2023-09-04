@@ -4,7 +4,7 @@ type config struct {
 	Width  int
 	Height int
 	// pixels per second
-	MaxMoveSpeed float64
+	MaxMoveSpeed float32
 }
 
 var Config *config = &config{
