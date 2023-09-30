@@ -10,3 +10,10 @@ This repo is an attempt to write the original Ms. Pac-Man in Go. By original, I 
     - [Pac-Man Ghost Behavior](https://gameinternals.com/understanding-pac-man-ghost-behavior)
 
 For now I am assuming, Ms. Pac-Man game logic is the same as the original.
+
+## Development
+Install Go and required system packages. On Fedora-based distros:
+
+    yum install go libX11-devel libXcursor-devel libXrandr-devel libXinerama-devel libXi-devel libglvnd-devel libXxf86vm-devel
+
+Then see `make help` for more workflows.
