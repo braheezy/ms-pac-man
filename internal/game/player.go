@@ -34,6 +34,9 @@ func (p *Player) processWaypoints() {
 		p.setNextWaypoint()
 	} else {
 		// continuing moving to waypoint
+		// TODO:
+		//  - Move smoothly between waypoints based on move speed
+		//  - Handle curved waypoint paths i.e. turns
 		p.currentPixelPos = p.currentWaypoint.Center()
 	}
 }
