@@ -37,3 +37,6 @@ type WaypointPos struct {
 func (wp *WaypointPos) Center() PixelPos {
 	return PixelPos{float64(wp.X*assets.TileSize + (assets.TileSize / 2)), float64(wp.Y*assets.TileSize + (assets.TileSize / 2))}
 }
+
+// Set a small epsilon to account for floating-point errors
+const epsilon = 1e-6

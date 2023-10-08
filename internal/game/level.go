@@ -22,7 +22,7 @@ var levels = []Level{
 				Y: 23,
 			},
 			nextWaypoint: WaypointPos{
-				X: 13,
+				X: 12,
 				Y: 23,
 			},
 			currentPixelPos: PixelPos{

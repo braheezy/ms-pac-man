@@ -21,6 +21,7 @@ type Player struct {
 	// How fast the player moves in pixels per frame
 	moveSpeed                     float64
 	waypointHeight, waypointWidth int
+	turning                       bool
 
 	grid [][]assets.Tile
 }
@@ -35,12 +36,31 @@ func (p *Player) processWaypoints() {
 		p.setNextWaypoint()
 	}
 
-	// continuing moving to waypoint
-	// TODO:
-	//  - Move smoothly between waypoints based on move speed
-	//  - Handle curved waypoint paths i.e. turns
-	p.currentPixelPos = p.currentWaypoint.Center()
+	p.updateTurnStatus()
 
+	// continuing moving to waypoint
+	if p.turning {
+		// TODO:
+		//  - Handle curved waypoint paths i.e. turns
+
+		p.currentPixelPos = p.currentWaypoint.Center()
+	} else {
+		// Calculate the vector from the player to the waypoint
+		directionVector := PixelPos{p.currentWaypoint.Center().X - p.currentPixelPos.X, p.currentWaypoint.Center().Y - p.currentPixelPos.Y}
+
+		// Calculate the magnitude of the direction vector
+		magnitude := math.Sqrt(directionVector.X*directionVector.X + directionVector.Y*directionVector.Y)
+
+		// Normalize the direction vector (make it a unit vector)
+		directionVector.X /= magnitude
+		directionVector.Y /= magnitude
+
+		// Calculate the new player position
+		p.currentPixelPos = PixelPos{
+			X: p.currentPixelPos.X + directionVector.X*p.moveSpeed,
+			Y: p.currentPixelPos.Y + directionVector.Y*p.moveSpeed,
+		}
+	}
 }
 
 func (p *Player) setNextWaypoint() {
@@ -96,6 +116,29 @@ func (p *Player) Update() {
 	p.updateRequestedDirection()
 
 	p.processWaypoints()
+}
+
+func (p *Player) updateTurnStatus() {
+	// Calculate vectors from the player to the current waypoint and from the current waypoint to the next waypoint
+	vector1 := PixelPos{p.currentWaypoint.Center().X - p.currentPixelPos.X, p.currentWaypoint.Center().Y - p.currentPixelPos.Y}
+	vector2 := PixelPos{p.nextWaypoint.Center().X - p.currentWaypoint.Center().X, p.nextWaypoint.Center().Y - p.currentWaypoint.Center().Y}
+
+	// Calculate the angle between the two vectors
+	dotProduct := vector1.X*vector2.X + vector1.Y*vector2.Y
+	magnitude1 := math.Sqrt(vector1.X*vector1.X + vector1.Y*vector1.Y)
+	magnitude2 := math.Sqrt(vector2.X*vector2.X + vector2.Y*vector2.Y)
+
+	// Calculate the cosine of the angle
+	cosTheta := dotProduct / (magnitude1 * magnitude2)
+
+	// Calculate the angle in radians
+	theta := math.Acos(cosTheta)
+
+	// Convert the angle to degrees
+	angleDegrees := theta * (180.0 / math.Pi)
+
+	// Check if the angle is not approximately 180 degrees
+	p.turning = angleDegrees != 0 && math.Abs(angleDegrees-180.0) > epsilon
 }
 
 func (p *Player) updateRequestedDirection() {
