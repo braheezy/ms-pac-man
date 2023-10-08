@@ -26,36 +26,54 @@ type Player struct {
 }
 
 func (p *Player) processWaypoints() {
+	// Handle progress towards current waypoint
 	waypointDistance := math.Sqrt(math.Pow(p.currentWaypoint.Center().X-p.currentPixelPos.X, 2) + math.Pow(p.currentWaypoint.Center().Y-p.currentPixelPos.Y, 2))
-
 	waypointIsCaptured := waypointDistance <= 1
+
 	if waypointIsCaptured {
 		p.currentWaypoint = p.nextWaypoint
 		p.setNextWaypoint()
-	} else {
-		// continuing moving to waypoint
-		// TODO:
-		//  - Move smoothly between waypoints based on move speed
-		//  - Handle curved waypoint paths i.e. turns
-		p.currentPixelPos = p.currentWaypoint.Center()
 	}
+
+	// continuing moving to waypoint
+	// TODO:
+	//  - Move smoothly between waypoints based on move speed
+	//  - Handle curved waypoint paths i.e. turns
+	p.currentPixelPos = p.currentWaypoint.Center()
+
 }
 
 func (p *Player) setNextWaypoint() {
 	nextX, nextY := p.currentWaypoint.X, p.currentWaypoint.Y
-	switch p.requestedDirection {
+	newDirection := p.requestedDirection
+	switch newDirection {
 	case Up:
-		nextY = p.currentWaypoint.Y - 1
+		nextY = nextY - 1
 	case Right:
-		nextX = p.currentWaypoint.X + 1
+		nextX = nextX + 1
 	case Down:
-		nextY = p.currentWaypoint.Y + 1
+		nextY = nextY + 1
 	case Left:
-		nextX = p.currentWaypoint.X - 1
+		nextX = nextX - 1
 	}
 
 	if p.grid[nextY][nextX].Type == assets.TileTypeWall {
-		return
+		nextX, nextY = p.currentWaypoint.X, p.currentWaypoint.Y
+		newDirection = p.currentDirection
+		switch newDirection {
+		case Up:
+			nextY = nextY - 1
+		case Right:
+			nextX = nextX + 1
+		case Down:
+			nextY = nextY + 1
+		case Left:
+			nextX = nextX - 1
+		}
+
+		if p.grid[nextY][nextX].Type == assets.TileTypeWall {
+			return
+		}
 	}
 
 	if nextX < 1 {
@@ -70,8 +88,8 @@ func (p *Player) setNextWaypoint() {
 		nextY = p.waypointHeight
 	}
 
+	p.currentDirection = newDirection
 	p.nextWaypoint = WaypointPos{nextX, nextY}
-
 }
 
 func (p *Player) Update() {
@@ -90,4 +108,5 @@ func (p *Player) updateRequestedDirection() {
 	} else if ebiten.IsKeyPressed(ebiten.KeyArrowDown) {
 		p.requestedDirection = Down
 	}
+
 }
