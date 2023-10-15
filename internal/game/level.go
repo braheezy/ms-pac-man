@@ -9,7 +9,6 @@ import (
 
 type Level struct {
 	image  *ebiten.Image
-	grid   [][]assets.Tile
 	name   string
 	player Player
 }
@@ -18,17 +17,21 @@ var levels = []Level{
 	{
 		name: "Level 1",
 		player: Player{
-			currentTilePos: TilePos{
+			previousWaypoint: WaypointPos{
 				X: 13,
 				Y: 23,
 			},
-			currentPixelPos: PixelPos{
-				X: 13 * assets.TileSize,
-				Y: 23*assets.TileSize - (assets.TileSize / 2),
+			currentWaypoint: WaypointPos{
+				X: 13,
+				Y: 23,
 			},
-			nextPixelPos: PixelPos{
-				X: 13 * assets.TileSize,
-				Y: 23*assets.TileSize - (assets.TileSize / 2),
+			nextWaypoint: WaypointPos{
+				X: 12,
+				Y: 23,
+			},
+			currentPixelPos: PixelPos{
+				X: 13*assets.TileSize + (assets.TileSize / 2),
+				Y: 23*assets.TileSize + (assets.TileSize / 2),
 			},
 			image:              assets.LoadSprite("mspac_Lnorm"),
 			currentDirection:   Left,
@@ -38,30 +41,36 @@ var levels = []Level{
 	},
 }
 
-func playerSpeedForLevel(level int) float32 {
+func playerSpeedForLevel(level int) float64 {
 	if level == 1 {
-		return 0.8 * Config.MaxMoveSpeed / float32(ebiten.TPS())
+		return 0.8 * Config.MaxMoveSpeed / float64(ebiten.TPS())
 	} else if level >= 2 && level <= 4 {
-		return 0.9 * Config.MaxMoveSpeed / float32(ebiten.TPS())
+		return 0.9 * Config.MaxMoveSpeed / float64(ebiten.TPS())
 	} else if level >= 5 && level <= 20 {
-		return Config.MaxMoveSpeed / float32(ebiten.TPS())
+		return Config.MaxMoveSpeed / float64(ebiten.TPS())
 	} else {
-		return 0.9 * Config.MaxMoveSpeed / float32(ebiten.TPS())
+		return 0.9 * Config.MaxMoveSpeed / float64(ebiten.TPS())
 	}
 }
 
 func newDefaultLevel() *Level {
-	firstLevel := levels[0]
-	levelImage, tiles, err := assets.LoadLevelImage(firstLevel.name)
+	return createLevel(0)
+}
+
+func createLevel(index int) *Level {
+	level := levels[index]
+
+	var err error
+	level.image, level.player.grid, err = assets.LoadLevelImage(level.name)
 	if err != nil {
 		log.Fatalln(err)
 	}
-	firstLevel.image = levelImage
-	firstLevel.grid = tiles
+	level.player.waypointHeight = len(level.player.grid)
+	level.player.waypointWidth = len(level.player.grid[0])
 
-	return &firstLevel
+	return &level
 }
 
 func (l *Level) Update() {
-	l.player.Update(&l.grid, l.image)
+	l.player.Update()
 }

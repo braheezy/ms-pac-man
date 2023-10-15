@@ -1,7 +1,7 @@
 package game
 
 import (
-	"image"
+	"math"
 
 	"github.com/braheezy/ms-pacman/internal/assets"
 	"github.com/hajimehoshi/ebiten/v2"
@@ -10,126 +10,169 @@ import (
 type Player struct {
 	// The current sprite to show
 	image *ebiten.Image
-	// The current movement currentDirection
+	// The current movement direction
 	currentDirection Direction
 	// The input the user has requested
 	requestedDirection Direction
-	// Absolute pixel local to start drawing the sprite
+	// The pixel location of the player, based on center of the sprite
 	currentPixelPos PixelPos
-	// The estimated pixel position of where the player will be
-	nextPixelPos PixelPos
 	// Where on the grid the play is occupying
-	currentTilePos TilePos
-	// The tiles the player is about to encounter
-	nextTilePos []TilePos
+	previousWaypoint, currentWaypoint, nextWaypoint WaypointPos
 	// How fast the player moves in pixels per frame
-	moveSpeed float32
+	moveSpeed                     float64
+	waypointHeight, waypointWidth int
+	turning                       bool
+
+	grid [][]assets.Tile
 }
 
-func (p *Player) setNextPixelCoord() {
-	switch p.currentDirection {
+func (p *Player) processWaypoints() {
+	if p.currentDirection != p.requestedDirection {
+		// recalculate waypoints on direction change request
+		if (p.currentDirection == Up && p.requestedDirection == Down) ||
+			(p.currentDirection == Down && p.requestedDirection == Up) ||
+			(p.currentDirection == Left && p.requestedDirection == Right) ||
+			(p.currentDirection == Right && p.requestedDirection == Left) {
+			p.currentWaypoint = p.previousWaypoint
+			p.nextWaypoint = p.currentWaypoint
+			p.currentDirection = p.requestedDirection
+		}
+	}
+	// Handle progress towards current waypoint
+	waypointDistance := math.Sqrt(math.Pow(p.currentWaypoint.Center().X-p.currentPixelPos.X, 2) + math.Pow(p.currentWaypoint.Center().Y-p.currentPixelPos.Y, 2))
+
+	waypointIsCaptured := waypointDistance <= 1
+
+	if waypointIsCaptured {
+		p.previousWaypoint = p.currentWaypoint
+		p.currentWaypoint = p.nextWaypoint
+		p.setNextWaypoint()
+
+		if p.currentWaypoint == p.nextWaypoint {
+			return
+		}
+	}
+
+	if waypointDistance == 0 {
+		return
+	}
+
+	p.updateTurnStatus()
+	// continuing moving to waypoint
+	if p.turning {
+		waypointDistance = math.Sqrt(math.Pow(p.currentWaypoint.Center().X-p.currentPixelPos.X, 2) + math.Pow(p.currentWaypoint.Center().Y-p.currentPixelPos.Y, 2))
+		// Check for pre turn status
+		if waypointDistance <= assets.TileSize/2+1 {
+			p.previousWaypoint = p.currentWaypoint
+			p.setNextWaypoint()
+			p.currentWaypoint = p.nextWaypoint
+		}
+
+		// Check for post turn status
+		waypointDistance = math.Sqrt(math.Pow(p.previousWaypoint.Center().X-p.currentPixelPos.X, 2) + math.Pow(p.previousWaypoint.Center().Y-p.currentPixelPos.Y, 2))
+		// Check waypoint distance for pre turn status
+		if waypointDistance < assets.TileSize/2 {
+			p.currentWaypoint = p.previousWaypoint
+			p.setNextWaypoint()
+			p.currentWaypoint = p.nextWaypoint
+		}
+	}
+	// Calculate the vector from the player to the waypoint
+	directionVector := PixelPos{p.currentWaypoint.Center().X - p.currentPixelPos.X, p.currentWaypoint.Center().Y - p.currentPixelPos.Y}
+
+	// Calculate the magnitude of the direction vector
+	magnitude := math.Sqrt(directionVector.X*directionVector.X + directionVector.Y*directionVector.Y)
+
+	// Normalize the direction vector (make it a unit vector)
+	directionVector.X /= magnitude
+	directionVector.Y /= magnitude
+
+	// Calculate the new player position
+	p.currentPixelPos = PixelPos{
+		X: p.currentPixelPos.X + directionVector.X*p.moveSpeed,
+		Y: p.currentPixelPos.Y + directionVector.Y*p.moveSpeed,
+	}
+}
+
+func (p *Player) setNextWaypoint() {
+	nextX, nextY := p.currentWaypoint.X, p.currentWaypoint.Y
+	newDirection := p.requestedDirection
+	switch newDirection {
 	case Up:
-		p.nextPixelPos.Y = p.currentPixelPos.Y - p.moveSpeed
+		nextY = nextY - 1
 	case Right:
-		p.nextPixelPos.X = p.currentPixelPos.X + p.moveSpeed
+		nextX = nextX + 1
 	case Down:
-		p.nextPixelPos.Y = p.currentPixelPos.Y + p.moveSpeed
+		nextY = nextY + 1
 	case Left:
-		p.nextPixelPos.X = p.currentPixelPos.X - p.moveSpeed
-	}
-	if p.nextPixelPos.X < 0 {
-		p.nextPixelPos.X = 0
-	} else if p.nextPixelPos.X > float32(Config.Width) {
-		p.nextPixelPos.X = float32(Config.Width)
+		nextX = nextX - 1
 	}
 
-	if p.nextPixelPos.Y < 0 {
-		p.nextPixelPos.Y = 0
-	} else if p.nextPixelPos.Y > float32(Config.Height) {
-		p.nextPixelPos.Y = float32(Config.Height)
+	if p.grid[nextY][nextX].Type == assets.TileTypeWall {
+		nextX, nextY = p.currentWaypoint.X, p.currentWaypoint.Y
+		newDirection = p.currentDirection
+		switch newDirection {
+		case Up:
+			nextY = nextY - 1
+		case Right:
+			nextX = nextX + 1
+		case Down:
+			nextY = nextY + 1
+		case Left:
+			nextX = nextX - 1
+		}
+
+		if p.grid[nextY][nextX].Type == assets.TileTypeWall {
+			return
+		}
 	}
+
+	if nextX < 1 {
+		nextX = 1
+	} else if nextX >= p.waypointWidth {
+		nextX = p.waypointWidth
+	}
+
+	if nextY < 1 {
+		nextY = 1
+	} else if nextY >= p.waypointHeight {
+		nextY = p.waypointHeight
+	}
+
+	p.currentDirection = newDirection
+	p.nextWaypoint = WaypointPos{nextX, nextY}
 }
 
-func (p *Player) setNextTiles(bound int) {
-	var nextDiagX1, nextDiagY1, nextDiagX2, nextDiagY2 int
-	nextX, nextY := p.currentTilePos.X, p.currentTilePos.Y
-	switch p.requestedDirection {
-	case Up:
-		nextY--
-		nextDiagX1 = nextX - 1
-		nextDiagY1 = nextY
-		nextDiagX2 = nextX + 1
-		nextDiagY2 = nextY
-	case Right:
-		nextX++
-		nextDiagX1 = nextX
-		nextDiagY1 = nextY - 1
-		nextDiagX2 = nextX
-		nextDiagY2 = nextY + 1
-	case Down:
-		nextY++
-		nextDiagX1 = nextX - 1
-		nextDiagY1 = nextY
-		nextDiagX2 = nextX + 1
-		nextDiagY2 = nextY
-	case Left:
-		nextX--
-		nextDiagX1 = nextX
-		nextDiagY1 = nextY - 1
-		nextDiagX2 = nextX
-		nextDiagY2 = nextY + 1
-	}
+func (p *Player) Update() {
+	p.updateRequestedDirection()
 
-	if nextX < 0 {
-		nextX = 0
-	} else if nextX >= bound {
-		nextX = bound - 1
-	}
-	if nextY < 0 {
-		nextY = 0
-	} else if nextY >= bound {
-		nextY = bound - 1
-	}
-
-	p.nextTilePos = []TilePos{
-		{nextX, nextY},           // In front
-		{nextDiagX1, nextDiagY1}, // Lower
-		{nextDiagX2, nextDiagY2}, // Upper
-	}
+	p.processWaypoints()
 }
 
-func (p *Player) updateTileLocation() {
-	// To ensure we pick the right tile, use a pixel in the center of tile
-	centerPixelX := p.currentPixelPos.X + assets.TileSize/2
-	centerPixelY := p.currentPixelPos.Y + assets.TileSize/2
+func (p *Player) updateTurnStatus() {
+	// Calculate vectors from the player to the current waypoint and from the current waypoint to the next waypoint
+	vector1 := PixelPos{p.currentWaypoint.Center().X - p.currentPixelPos.X, p.currentWaypoint.Center().Y - p.currentPixelPos.Y}
+	vector2 := PixelPos{p.nextWaypoint.Center().X - p.currentWaypoint.Center().X, p.nextWaypoint.Center().Y - p.currentWaypoint.Center().Y}
 
-	gridX := centerPixelX / assets.TileSize
-	gridY := centerPixelY / assets.TileSize
+	// Calculate the angle between the two vectors
+	dotProduct := vector1.X*vector2.X + vector1.Y*vector2.Y
+	magnitude1 := math.Sqrt(vector1.X*vector1.X + vector1.Y*vector1.Y)
+	magnitude2 := math.Sqrt(vector2.X*vector2.X + vector2.Y*vector2.Y)
 
-	offsetX := int(centerPixelX) % assets.TileSize
-	offsetY := int(centerPixelY) % assets.TileSize
+	// Calculate the cosine of the angle
+	cosTheta := dotProduct / (magnitude1 * magnitude2)
 
-	coverageX := float32(offsetX) / assets.TileSize
-	coverageY := float32(offsetY) / assets.TileSize
+	// Calculate the angle in radians
+	theta := math.Acos(cosTheta)
 
-	// Determine the tile that the player is mostly covering
-	var tileX, tileY float32
-	if coverageX >= 0.50 {
-		tileX = gridX + 1
-	} else {
-		tileX = gridX
-	}
-	if coverageY >= 0.50 {
-		tileY = gridY + 1
-	} else {
-		tileY = gridY
-	}
+	// Convert the angle to degrees
+	angleDegrees := theta * (180.0 / math.Pi)
 
-	p.currentTilePos.X = int(tileX)
-	p.currentTilePos.Y = int(tileY)
+	// Check if the angle is not approximately 180 degrees
+	p.turning = angleDegrees != 0 && math.Abs(angleDegrees-180.0) > epsilon || p.currentDirection != p.requestedDirection
 }
 
-func (p *Player) Update(grid *[][]assets.Tile, levelImage *ebiten.Image) {
+func (p *Player) updateRequestedDirection() {
 	if ebiten.IsKeyPressed(ebiten.KeyArrowRight) {
 		p.requestedDirection = Right
 	} else if ebiten.IsKeyPressed(ebiten.KeyArrowLeft) {
@@ -140,141 +183,4 @@ func (p *Player) Update(grid *[][]assets.Tile, levelImage *ebiten.Image) {
 		p.requestedDirection = Down
 	}
 
-	// Predict next position
-	p.setNextPixelCoord()
-	p.setNextTiles(len(*grid))
-
-	if p.requestedDirection != p.currentDirection {
-		// Player is trying to turn
-		nextTilePos := p.nextTilePos[0]
-		lowerDiagonalTilePos := p.nextTilePos[1]
-		upperDiagonalTilePos := p.nextTilePos[2]
-		nextTile := (*grid)[nextTilePos.Y][nextTilePos.X]
-		lowerDiagonalTile := (*grid)[lowerDiagonalTilePos.Y][lowerDiagonalTilePos.X]
-		upperDiagonalTile := (*grid)[upperDiagonalTilePos.Y][upperDiagonalTilePos.X]
-
-		nextTileIsWall := nextTile.Type == assets.TileTypeWall
-		upperDiagonalTileIsWall := upperDiagonalTile.Type == assets.TileTypeWall
-		lowerDiagonalTileIsWall := lowerDiagonalTile.Type == assets.TileTypeWall
-
-		if nextTileIsWall {
-			// Player is trying to turn into a wall, so ignore the direction change
-			// but do update position.
-			p.currentPixelPos.X, p.currentPixelPos.Y = p.nextPixelPos.X, p.nextPixelPos.Y
-
-			p.updateTileLocation()
-			return
-		}
-
-		preTurn, postTurn := false, false
-
-		// Calculate Pac-Man's position within the current tile.
-		// The fractional part represents how far Pac-Man has moved within the tile.
-		tileFractionX := float64(int(p.currentPixelPos.X)%assets.TileSize) / float64(assets.TileSize)
-		tileFractionY := float64(int(p.currentPixelPos.Y)%assets.TileSize) / float64(assets.TileSize)
-
-		// Calculate the centerline within the current tile.
-		centerlineX := 0.5 // Assuming the centerline is at the middle of the tile (0.5).
-
-		// Check if Pac-Man has crossed the centerline.
-		if (p.currentDirection == Right && tileFractionX >= centerlineX) ||
-			(p.currentDirection == Left && tileFractionX <= centerlineX) ||
-			(p.currentDirection == Up && tileFractionY <= centerlineX) ||
-			(p.currentDirection == Down && tileFractionY >= centerlineX) {
-			// Pac-Man has crossed the centerline, indicating a post-turn state.
-			postTurn = true
-		} else {
-			// Pac-Man is not in a post-turn state, so check if he's in a pre-turn state.
-			if (!upperDiagonalTileIsWall && (p.currentDirection == Up || p.currentDirection == Right)) ||
-				(!lowerDiagonalTileIsWall && (p.currentDirection == Down || p.currentDirection == Right)) {
-				// Pac-Man is in a pre-turn state.
-				preTurn = true
-			}
-		}
-
-		if preTurn {
-			println("Pre turn")
-			// Modify Pac-Man's velocity for a 45-degree angle
-			diagonalSpeed := p.moveSpeed / 1.4142 // 1.4142 is the square root of 2 (for equal diagonal speed)
-			// Update Pac-Man's position until he reaches the centerline
-			// Assuming `centerlineX` is calculated as in the previous code example.
-			if (p.currentDirection == Right && tileFractionX < centerlineX) ||
-				(p.currentDirection == Left && tileFractionX > centerlineX) ||
-				(p.currentDirection == Up && tileFractionY > centerlineX) ||
-				(p.currentDirection == Down && tileFractionY < centerlineX) {
-				// Pac-Man is in a pre-turn state, so update his position.
-				switch p.currentDirection {
-				case Right:
-					p.currentPixelPos.X += diagonalSpeed // Move diagonally up and right
-					p.currentPixelPos.Y -= diagonalSpeed
-				case Down:
-					p.currentPixelPos.X += diagonalSpeed // Move diagonally down and right
-					p.currentPixelPos.Y += diagonalSpeed
-				case Left:
-					p.currentPixelPos.X -= diagonalSpeed // Move diagonally down and left
-					p.currentPixelPos.Y += diagonalSpeed
-				case Up:
-					p.currentPixelPos.X -= diagonalSpeed // Move diagonally up and left
-					p.currentPixelPos.Y -= diagonalSpeed
-				}
-			}
-		} else if postTurn {
-			println("Post turn")
-			// Modify Pac-Man's velocity for a 45-degree angle
-			diagonalSpeed := p.moveSpeed / 1.4142 // 1.4142 is the square root of 2 (for equal diagonal speed)
-
-			// Update Pac-Man's position until he has completed the turn
-			// Assuming `centerlineX` is calculated as in the previous code example.
-			if (p.currentDirection == Right && tileFractionX >= centerlineX) ||
-				(p.currentDirection == Left && tileFractionX <= centerlineX) ||
-				(p.currentDirection == Up && tileFractionY <= centerlineX) ||
-				(p.currentDirection == Down && tileFractionY >= centerlineX) {
-				// Pac-Man is in a post-turn state, so update his position.
-				switch p.currentDirection {
-				case Right:
-					p.currentPixelPos.X += diagonalSpeed // Move diagonally up and right
-					p.currentPixelPos.Y -= diagonalSpeed
-				case Down:
-					p.currentPixelPos.X += diagonalSpeed // Move diagonally down and right
-					p.currentPixelPos.Y += diagonalSpeed
-				case Left:
-					p.currentPixelPos.X -= diagonalSpeed // Move diagonally down and left
-					p.currentPixelPos.Y += diagonalSpeed
-				case Up:
-					p.currentPixelPos.X -= diagonalSpeed // Move diagonally up and left
-					p.currentPixelPos.Y -= diagonalSpeed
-				}
-			}
-		} else {
-			p.currentPixelPos.X, p.currentPixelPos.Y = p.nextPixelPos.X, p.nextPixelPos.Y
-
-			p.updateTileLocation()
-			return
-		}
-
-	} else {
-		// Continue in the same direction
-		nextTilePos := p.nextTilePos[0]
-		nextTile := (*grid)[nextTilePos.Y][nextTilePos.X]
-		if nextTile.Type == assets.TileTypeWall {
-			// Perform pixel analysis to allow proper approaches to wall tiles.
-			boundingBox := image.Rect(int(p.nextPixelPos.X), int(p.nextPixelPos.Y), int(p.nextPixelPos.X+assets.SpriteSize), int(p.nextPixelPos.Y+assets.SpriteSize))
-
-			for y := boundingBox.Min.Y; y < boundingBox.Max.Y; y++ {
-				for x := boundingBox.Min.X; x < boundingBox.Max.X; x++ {
-					r, g, b, _ := levelImage.At(x, y).RGBA()
-					// Magic numbers avoid pellet color
-					if (0 < r && r < 57054) || (0 < g && g < 57054) || (0 < b && b < 65535) {
-						// Player is up against a wall, stop all movement.
-						return
-					}
-				}
-			}
-		}
-	}
-
-	// Update the position of the player to the next position.
-	p.currentPixelPos.X, p.currentPixelPos.Y = p.nextPixelPos.X, p.nextPixelPos.Y
-	p.currentDirection = p.requestedDirection
-	p.updateTileLocation()
 }

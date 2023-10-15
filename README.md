@@ -12,7 +12,7 @@ This repo is an attempt to write the original Ms. Pac-Man in Go. By original, I 
 For now I am assuming, Ms. Pac-Man game logic is the same as the original.
 
 ## Development
-Install Go and required system packages. On Fedora-based distros:
+You need Go and the stuff [glfw](https://github.com/go-gl/glfw) depends on:
 
     yum install go libX11-devel libXcursor-devel libXrandr-devel libXinerama-devel libXi-devel libglvnd-devel libXxf86vm-devel
 

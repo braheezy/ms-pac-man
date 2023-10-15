@@ -1,5 +1,7 @@
 package game
 
+import "github.com/braheezy/ms-pacman/internal/assets"
+
 type Direction int
 
 const (
@@ -25,9 +27,16 @@ func (d Direction) String() string {
 }
 
 type PixelPos struct {
-	X, Y float32
+	X, Y float64
 }
 
-type TilePos struct {
+type WaypointPos struct {
 	X, Y int
 }
+
+func (wp *WaypointPos) Center() PixelPos {
+	return PixelPos{float64(wp.X*assets.TileSize + (assets.TileSize / 2)), float64(wp.Y*assets.TileSize + (assets.TileSize / 2))}
+}
+
+// Set a small epsilon to account for floating-point errors
+const epsilon = 1e-6
