@@ -53,36 +53,45 @@ func (p *Player) processWaypoints() {
 		}
 	}
 
-	p.updateTurnStatus()
-
-	// continuing moving to waypoint
-	if p.turning {
-		// TODO:
-		//  - Handle curved waypoint paths i.e. turns
-
-		// p.currentPixelPos = p.currentWaypoint.Center()
-	} else {
-		if waypointDistance == 0 {
-			return
-		}
-		// Calculate the vector from the player to the waypoint
-		directionVector := PixelPos{p.currentWaypoint.Center().X - p.currentPixelPos.X, p.currentWaypoint.Center().Y - p.currentPixelPos.Y}
-
-		// Calculate the magnitude of the direction vector
-		magnitude := math.Sqrt(directionVector.X*directionVector.X + directionVector.Y*directionVector.Y)
-
-		// Normalize the direction vector (make it a unit vector)
-		directionVector.X /= magnitude
-		directionVector.Y /= magnitude
-
-		// Calculate the new player position
-		p.currentPixelPos = PixelPos{
-			X: p.currentPixelPos.X + directionVector.X*p.moveSpeed,
-			Y: p.currentPixelPos.Y + directionVector.Y*p.moveSpeed,
-		}
+	if waypointDistance == 0 {
+		return
 	}
 
-	// p.currentPixelPos = p.currentWaypoint.Center()
+	p.updateTurnStatus()
+	// continuing moving to waypoint
+	if p.turning {
+		waypointDistance = math.Sqrt(math.Pow(p.currentWaypoint.Center().X-p.currentPixelPos.X, 2) + math.Pow(p.currentWaypoint.Center().Y-p.currentPixelPos.Y, 2))
+		// Check for pre turn status
+		if waypointDistance <= assets.TileSize/2+1 {
+			p.previousWaypoint = p.currentWaypoint
+			p.setNextWaypoint()
+			p.currentWaypoint = p.nextWaypoint
+		}
+
+		// Check for post turn status
+		waypointDistance = math.Sqrt(math.Pow(p.previousWaypoint.Center().X-p.currentPixelPos.X, 2) + math.Pow(p.previousWaypoint.Center().Y-p.currentPixelPos.Y, 2))
+		// Check waypoint distance for pre turn status
+		if waypointDistance < assets.TileSize/2 {
+			p.currentWaypoint = p.previousWaypoint
+			p.setNextWaypoint()
+			p.currentWaypoint = p.nextWaypoint
+		}
+	}
+	// Calculate the vector from the player to the waypoint
+	directionVector := PixelPos{p.currentWaypoint.Center().X - p.currentPixelPos.X, p.currentWaypoint.Center().Y - p.currentPixelPos.Y}
+
+	// Calculate the magnitude of the direction vector
+	magnitude := math.Sqrt(directionVector.X*directionVector.X + directionVector.Y*directionVector.Y)
+
+	// Normalize the direction vector (make it a unit vector)
+	directionVector.X /= magnitude
+	directionVector.Y /= magnitude
+
+	// Calculate the new player position
+	p.currentPixelPos = PixelPos{
+		X: p.currentPixelPos.X + directionVector.X*p.moveSpeed,
+		Y: p.currentPixelPos.Y + directionVector.Y*p.moveSpeed,
+	}
 }
 
 func (p *Player) setNextWaypoint() {
@@ -160,7 +169,7 @@ func (p *Player) updateTurnStatus() {
 	angleDegrees := theta * (180.0 / math.Pi)
 
 	// Check if the angle is not approximately 180 degrees
-	p.turning = angleDegrees != 0 && math.Abs(angleDegrees-180.0) > epsilon
+	p.turning = angleDegrees != 0 && math.Abs(angleDegrees-180.0) > epsilon || p.currentDirection != p.requestedDirection
 }
 
 func (p *Player) updateRequestedDirection() {
