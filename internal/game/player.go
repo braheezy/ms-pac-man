@@ -17,7 +17,7 @@ type Player struct {
 	// The pixel location of the player, based on center of the sprite
 	currentPixelPos PixelPos
 	// Where on the grid the play is occupying
-	currentWaypoint, nextWaypoint WaypointPos
+	previousWaypoint, currentWaypoint, nextWaypoint WaypointPos
 	// How fast the player moves in pixels per frame
 	moveSpeed                     float64
 	waypointHeight, waypointWidth int
@@ -27,13 +27,30 @@ type Player struct {
 }
 
 func (p *Player) processWaypoints() {
+	if p.currentDirection != p.requestedDirection {
+		// recalculate waypoints on direction change request
+		if (p.currentDirection == Up && p.requestedDirection == Down) ||
+			(p.currentDirection == Down && p.requestedDirection == Up) ||
+			(p.currentDirection == Left && p.requestedDirection == Right) ||
+			(p.currentDirection == Right && p.requestedDirection == Left) {
+			p.currentWaypoint = p.previousWaypoint
+			p.nextWaypoint = p.currentWaypoint
+			p.currentDirection = p.requestedDirection
+		}
+	}
 	// Handle progress towards current waypoint
 	waypointDistance := math.Sqrt(math.Pow(p.currentWaypoint.Center().X-p.currentPixelPos.X, 2) + math.Pow(p.currentWaypoint.Center().Y-p.currentPixelPos.Y, 2))
+
 	waypointIsCaptured := waypointDistance <= 1
 
 	if waypointIsCaptured {
+		p.previousWaypoint = p.currentWaypoint
 		p.currentWaypoint = p.nextWaypoint
 		p.setNextWaypoint()
+
+		if p.currentWaypoint == p.nextWaypoint {
+			return
+		}
 	}
 
 	p.updateTurnStatus()
@@ -43,8 +60,11 @@ func (p *Player) processWaypoints() {
 		// TODO:
 		//  - Handle curved waypoint paths i.e. turns
 
-		p.currentPixelPos = p.currentWaypoint.Center()
+		// p.currentPixelPos = p.currentWaypoint.Center()
 	} else {
+		if waypointDistance == 0 {
+			return
+		}
 		// Calculate the vector from the player to the waypoint
 		directionVector := PixelPos{p.currentWaypoint.Center().X - p.currentPixelPos.X, p.currentWaypoint.Center().Y - p.currentPixelPos.Y}
 
@@ -61,6 +81,8 @@ func (p *Player) processWaypoints() {
 			Y: p.currentPixelPos.Y + directionVector.Y*p.moveSpeed,
 		}
 	}
+
+	// p.currentPixelPos = p.currentWaypoint.Center()
 }
 
 func (p *Player) setNextWaypoint() {

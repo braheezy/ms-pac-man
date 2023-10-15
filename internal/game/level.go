@@ -17,6 +17,10 @@ var levels = []Level{
 	{
 		name: "Level 1",
 		player: Player{
+			previousWaypoint: WaypointPos{
+				X: 13,
+				Y: 23,
+			},
 			currentWaypoint: WaypointPos{
 				X: 13,
 				Y: 23,
